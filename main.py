@@ -6,7 +6,7 @@ import asyncio
 import requests
 from random import choice
 
-API_TOKEN = "Вставьте токен"
+API_TOKEN = "Вставьте ваш токен"
 
 
 logging.basicConfig(level=logging.INFO)
