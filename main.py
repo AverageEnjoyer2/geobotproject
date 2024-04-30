@@ -1,19 +1,18 @@
 import logging
 import psycopg2
 from aiogram import executor, types, Bot, Dispatcher
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ContentType
-import asyncio
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 from random import choice
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-API_TOKEN = "7073227849:AAHQ85zGxsC8Jv4kc27ec7NTCFsAR0p0MiA"
+API_TOKEN = "7073227849:AAHQ85zGxsC8Jv4kc27ec7NTCFsAR0p0MiA"  # Токен бота
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=API_TOKEN)
-storage = MemoryStorage()
+bot = Bot(token=API_TOKEN)  # создание бота
+storage = MemoryStorage()  # создание хранилища
 dp = Dispatcher(bot, storage=storage)
 waiting_for_answer = False
 rightansw = []
@@ -24,12 +23,12 @@ POSTGRES_USERNAME = "postgres"
 POSTGRES_PASSWORD = "S11032008"
 POSTGRES_HOST = "127.0.0.1"
 POSTGRES_PORT = "8080"
-POSTGRES_DATABASE = "postgres"
+POSTGRES_DATABASE = "postgres"  # данные для подключения к PostgreSQL
 try:
     connection = psycopg2.connect(user=POSTGRES_CONN.split(":")[1][2:], host=POSTGRES_CONN.split(":")[2].split("@")[1],
                                   port=int(POSTGRES_CONN.split(":")[3].split("/")[0]),
                                   database=POSTGRES_CONN.split(":")[3].split("/")[1],
-                                  password=POSTGRES_CONN.split(":")[2].split("@")[0])
+                                  password=POSTGRES_CONN.split(":")[2].split("@")[0])  # подключение к PostgreSQL
 except psycopg2.OperationalError:
     connection = psycopg2.connect(user=POSTGRES_USERNAME, host=POSTGRES_HOST,
                                   port=int(POSTGRES_PORT),
@@ -37,7 +36,7 @@ except psycopg2.OperationalError:
                                   password=POSTGRES_PASSWORD)
 
 
-class Waitforcity(StatesGroup):
+class Waitforcity(StatesGroup):  # Создание класса для работы с контекстом пользователя
     city = State()
     radius = State()
     final = State()
@@ -50,8 +49,9 @@ async def set_default_commands(dp):
         types.BotCommand("play", "Унадайте город"),
         types.BotCommand("me", "Посмотреть свою статистику"),
         types.BotCommand("playflag", "Угадайте игру по флагу"),
-        types.BotCommand("citymap", "Сгенерировать карту окрестностей города или метса")
-    ])
+        types.BotCommand("citymap", "Сгенерировать карту окрестностей города или метса"),
+        types.BotCommand("playindependence", "Угадайте страну по дате независимости")
+    ])  # Предложенные комманды
 
 
 @dp.message_handler(commands=['start'])
@@ -61,11 +61,11 @@ async def start_message(message: types.Message):
     result = cur.fetchall()
     await message.answer('Здравствуйте!')
     registered = False
-    for id in result:
-        if str(id[0]) == str(message.from_user.id):
+    for userid in result:
+        if str(userid[0]) == str(message.from_user.id):
             registered = True
             break
-    if not registered:
+    if not registered:  # Регистрация нового польззователя
         cur.execute(f"""INSERT INTO useripstats (id, userip, wins, losses) VALUES
                 ('{len(result)}', '{message.from_user.id}','0','0');""")
         connection.commit()
@@ -74,16 +74,17 @@ async def start_message(message: types.Message):
 @dp.message_handler(commands=['help'])
 async def start_message(message: types.Message):
     await message.answer(
-        'Я покажу карту небольшого города и его окрестностей, а вы попытаетесь угадать его субъект! Начать игру командой play!')
+        'Я покажу карту небольшого города и его окрестностей, а вы попытаетесь угадать его субъект! Начать игру '
+        'командой play!')
 
 
-@dp.message_handler(commands=['play'])
+@dp.message_handler(commands=['play'])  # Игра, где надо угадать субъект
 async def start_message(message: types.Message):
     global rightansw
     cities = [["Армавир", "Краснодарский Край"], ["Сальск", "Ростовская область"], ["Обнинск", "Калужская область"],
               ["Ачинск", "Красноярский край"], ["Стерлитамак", "Республика Башкортостан"],
               ["Златоуст", "Челябинская область"], ["Сызрань", "Самарская область"],
-              ["Вятские Поляны", "Кировская область"], ["Камышин", "Волгоградская область"]]
+              ["Вятские Поляны", "Кировская область"], ["Камышин", "Волгоградская область"]]  # Возможные варианты
     rightansw = choice(cities)
     geocoder_request = f"http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&geocode=" \
                        f"{rightansw[0]}&kind=metro&format=json"
@@ -93,7 +94,7 @@ async def start_message(message: types.Message):
         "Point"]["pos"].split()
     map_request = f"https://static-maps.yandex.ru/1.x/?ll={coords[0]},{coords[1]}&spn=0.2,0.2&l=map"
     response = requests.get(map_request)
-    map_file = "map.png"
+    map_file = "map.png"  # подключение к geocoder и Яндекс картам для генерации карты
     with open(map_file, "wb") as file:
         file.write(response.content)
     global proposed_answers
@@ -106,7 +107,8 @@ async def start_message(message: types.Message):
     i = 0
     for propregion in proposed_answers:
         i += 1
-        inline_kb.add(InlineKeyboardButton(propregion, callback_data=f'btn{i}'))
+        inline_kb.add(InlineKeyboardButton(propregion, callback_data=f'btn{i}'))  # Генерация клавиатуры и
+        # вариантов ответа
     global waiting_for_answer
     waiting_for_answer = True
     global chat_id
@@ -115,7 +117,7 @@ async def start_message(message: types.Message):
         await bot.send_photo(chat_id=message.chat.id, photo=photo, reply_markup=inline_kb)
 
 
-@dp.callback_query_handler(lambda c: c.data and c.data.startswith('btn'))
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('btn'))  # После получения ответа
 async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
     global waiting_for_answer
     if waiting_for_answer:
@@ -125,7 +127,8 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
             cur.execute(f"""SELECT wins FROM useripstats WHERE userip = '{callback_query.from_user.id}'""")
             result = cur.fetchall()
             cur.execute(
-                f"""UPDATE useripstats SET wins = '{int(result[0][0]) + 1}' WHERE userip = '{callback_query.from_user.id}'""")
+                f"""UPDATE useripstats SET wins = '{int(result[0][0]) + 1}' WHERE userip = 
+                '{callback_query.from_user.id}'""")
             connection.commit()
             await bot.send_message(chat_id=chat_id, text='Правильно!')
         else:
@@ -133,13 +136,15 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
             cur.execute(f"""SELECT losses FROM useripstats WHERE userip = '{callback_query.from_user.id}'""")
             result = cur.fetchall()
             cur.execute(
-                f"""UPDATE useripstats SET losses = '{int(result[0][0]) + 1}' WHERE userip = '{callback_query.from_user.id}'""")
+                f"""UPDATE useripstats SET losses = '{int(result[0][0]) + 1}' WHERE userip = 
+                '{callback_query.from_user.id}'""")
             connection.commit()
             await bot.send_message(chat_id=chat_id, text=f'Неправильно! Правильный ответ - {rightansw[1]}')
+            # Подключение к Psql, запись туда результатов
         waiting_for_answer = False
 
 
-@dp.message_handler(commands=['me'])
+@dp.message_handler(commands=['me'])  # Просмотр статистики пользователя
 async def stat_message(message: types.Message):
     cur = connection.cursor()
     cur.execute(f"""SELECT wins, losses FROM useripstats WHERE userip = '{message.from_user.id}'""")
@@ -154,7 +159,7 @@ async def stat_message(message: types.Message):
             f'соотношение побед к проигрышам - {round(int(result[0][0]) / int(result[0][1]), 2)}')
 
 
-@dp.message_handler(commands=['playflag'])
+@dp.message_handler(commands=['playflag'])  # Игра, где надо угадать страну по флагу
 async def flag_message(message: types.Message):
     global rightansw
     countries = [["Guat.png", "Гватемала"], ["CAR.png", "Центральноафриканская республика"],
@@ -181,13 +186,13 @@ async def flag_message(message: types.Message):
         await bot.send_photo(chat_id=message.chat.id, photo=photo, reply_markup=inline_kb)
 
 
-@dp.message_handler(commands=['citymap'])
+@dp.message_handler(commands=['citymap'])  # Генерация карты окрестностей указанного места
 async def city_map(message: types.Message):
     await message.answer('Введите город или место, карту окрестностей которого хотите сгенерировать!')
     await Waitforcity.city.set()
 
 
-@dp.message_handler(state=Waitforcity.city)
+@dp.message_handler(state=Waitforcity.city)  # Второй этап
 async def process_city(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['city'] = message.text
@@ -196,7 +201,7 @@ async def process_city(message: types.Message, state: FSMContext):
     await message.reply("Насколько отдалённую карту хотите(~0.05-10)?")
 
 
-def isnumber(text):
+def isnumber(text):  # Проверка числа
     try:
         float(text)
         return True
@@ -204,7 +209,7 @@ def isnumber(text):
         return False
 
 
-@dp.message_handler(lambda message: isnumber(message.text), state=Waitforcity.radius)
+@dp.message_handler(lambda message: isnumber(message.text), state=Waitforcity.radius)  # Третий этап
 async def process_radius(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         cit = data['city']
@@ -215,9 +220,10 @@ async def process_radius(message: types.Message, state: FSMContext):
         json_response = response.json()
         coords = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"][
             "Point"]["pos"].split()
-        map_request = f"https://static-maps.yandex.ru/1.x/?ll={coords[0]},{coords[1]}&spn={message.text},{message.text}&l=map"
+        map_request = \
+            f"https://static-maps.yandex.ru/1.x/?ll={coords[0]},{coords[1]}&spn={message.text},{message.text}&l=map"
         response = requests.get(map_request)
-        map_file = "map.png"
+        map_file = "map.png"  # Подключение к указанному месту
         with open(map_file, "wb") as file:
             file.write(response.content)
         global chat_id
@@ -230,11 +236,11 @@ async def process_radius(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Waitforcity.radius)
-async def process_radius_invalid(message: types.Message):
+async def process_radius_invalid(message: types.Message):  # Если пользователь написал текст вместо числа
     return await message.reply("Напиши числом!")
 
 
-@dp.message_handler(commands=['playindependence'])
+@dp.message_handler(commands=['playindependence'])  # Игра, где надо угадать страну по дате независимости
 async def start_message(message: types.Message):
     global rightansw
     countries = [["15 сентября 1821", "Гондурас"], ["4 июля 1776", "Соединённые Штаты Америки"],
