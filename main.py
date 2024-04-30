@@ -81,7 +81,9 @@ async def start_message(message: types.Message):
 async def start_message(message: types.Message):
     global rightansw
     cities = [["Армавир", "Краснодарский Край"], ["Сальск", "Ростовская область"], ["Обнинск", "Калужская область"],
-              ["Ачинск", "Красноярский край"]]
+              ["Ачинск", "Красноярский край"], ["Стерлитамак", "Республика Башкортостан"],
+              ["Златоуст", "Челябинская область"], ["Сызрань", "Самарская область"],
+              ["Вятские Поляны", "Кировская область"], ["Камышин", "Волгоградская область"]]
     rightansw = choice(cities)
     geocoder_request = f"http://geocode-maps.yandex.ru/1.x/?apikey=40d1649f-0493-4b70-98ba-98533de7710b&geocode=" \
                        f"{rightansw[0]}&kind=metro&format=json"
@@ -133,7 +135,7 @@ async def process_callback_kb1btn1(callback_query: types.CallbackQuery):
             cur.execute(
                 f"""UPDATE useripstats SET losses = '{int(result[0][0]) + 1}' WHERE userip = '{callback_query.from_user.id}'""")
             connection.commit()
-            await bot.send_message(chat_id=chat_id, text=f'Неправильно! Правильный субъект - {rightansw[1]}')
+            await bot.send_message(chat_id=chat_id, text=f'Неправильно! Правильный ответ - {rightansw[1]}')
         waiting_for_answer = False
 
 
@@ -148,14 +150,17 @@ async def stat_message(message: types.Message):
         await message.answer(f'Похожы вы ещё ни разу не проигрывали! Число ваших побед - {result[0][0]}')
     else:
         await message.answer(
-            f'Число ваших побед - {result[0][0]}, Число ваших проигрышей - {result[0][1]}, соотношение побед к проигрышам - {round(int(result[0][0]) / int(result[0][0]))}')
+            f'Число ваших побед - {result[0][0]}, Число ваших проигрышей - {result[0][1]}, '
+            f'соотношение побед к проигрышам - {round(int(result[0][0]) / int(result[0][1]), 2)}')
 
 
 @dp.message_handler(commands=['playflag'])
 async def flag_message(message: types.Message):
     global rightansw
     countries = [["Guat.png", "Гватемала"], ["CAR.png", "Центральноафриканская республика"],
-                 ["Switzerland.png", "Швейцария"], ["Bolivia.png", "Боливия"]]
+                 ["Switzerland.png", "Швейцария"], ["Bolivia.png", "Боливия"], ["columb.png", "Колумбия"],
+                 ["haiti.png", "Гаити"], ["argentina.png", "Аргентина"], ["cambodia.png", "Камбоджа"],
+                 ["india.png", "Индия"]]
     rightansw = choice(countries)
     global proposed_answers
     proposed_answers = [rightansw[1]]
@@ -227,6 +232,32 @@ async def process_radius(message: types.Message, state: FSMContext):
 @dp.message_handler(lambda message: not message.text.isdigit(), state=Waitforcity.radius)
 async def process_radius_invalid(message: types.Message):
     return await message.reply("Напиши числом!")
+
+
+@dp.message_handler(commands=['playindependence'])
+async def start_message(message: types.Message):
+    global rightansw
+    countries = [["15 сентября 1821", "Гондурас"], ["4 июля 1776", "Соединённые Штаты Америки"],
+                 ["17 апреля 1982 года", "Канада"], ["7 сентября 1822 года", "Бразилия"],
+                 ["20 июля 1810 года", "Колумбия"], ["1 января 1804 года", "Гаити"], ["9 июля 1816 года", "Аргентина"],
+                 ["9 ноября 1953 года", "Камбоджа"], ["15 августа 1947 года", "Индия"]]
+    rightansw = choice(countries)
+    global proposed_answers
+    proposed_answers = [rightansw[1]]
+    testcities = countries
+    del testcities[testcities.index(rightansw)]
+    for i in range(3):
+        proposed_answers.append(testcities.pop(testcities.index(choice(testcities)))[1])
+    inline_kb = InlineKeyboardMarkup(row_width=2)
+    i = 0
+    for propregion in proposed_answers:
+        i += 1
+        inline_kb.add(InlineKeyboardButton(propregion, callback_data=f'btn{i}'))
+    global waiting_for_answer
+    waiting_for_answer = True
+    global chat_id
+    chat_id = message.chat.id
+    await message.reply(rightansw[0], reply_markup=inline_kb)
 
 
 if __name__ == '__main__':
